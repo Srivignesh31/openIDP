@@ -4,6 +4,7 @@ set -e
  
 #Script Behaviour Modifying Parameters (Change after throughly reading documentation)
 EXEC_DIR=${EXEC_DIR:-$PWD}
+EXEC_DIR=${EXEC_DIR:-$PWD}
 SKIP_TESTS=${SKIP_TESTS:-true}
 REMOVE_OLDER=${REMOVE_OLDER:-true}
 BUILD_ONLY=${BUILD_ONLY:-false}
