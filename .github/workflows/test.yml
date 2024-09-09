@@ -1,0 +1,50 @@
+name: Semgrep Scan
+
+on:
+  push:
+    branches:
+      - '*'
+
+jobs:
+  semgrep:
+    name: semgrep-oss/scan
+    runs-on: ubuntu-latest
+
+    container:
+      image: semgrep/semgrep
+
+    if: (github.actor != 'dependabot[bot]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep Scan
+        run: |
+          semgrep scan --config auto --json --oss-only --json-output=semgrep_output.json
+
+      - name: Generate Summary from Semgrep JSON
+        id: semgrep_summary # Add an ID to reference the outputs later
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          total_findings=$(jq '.results | length' semgrep_output.json)
+          errors=$(jq '.results | map(select(.severity == "ERROR")) | length' semgrep_output.json)
+          warnings=$(jq '.results | map(select(.severity == "WARNING")) | length' semgrep_output.json)
+
+          echo "### Semgrep Scan Results ###" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Findings:** $total_findings" >> $GITHUB_STEP_SUMMARY
+          echo "**Errors:** $errors" >> $GITHUB_STEP_SUMMARY
+          echo "**Warnings:** $warnings" >> $GITHUB_STEP_SUMMARY
+
+          if [ $total_findings -gt 0 ]; then
+            echo "**Findings:**" >> $GITHUB_STEP_SUMMARY
+            jq -r '.results[] | "* \(.path):\(.start.line): \(.extra.message)"' semgrep_output.json >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "total_findings=$total_findings" >> $GITHUB_OUTPUT
+          echo "errors=$errors" >> $GITHUB_OUTPUT
+          echo "warnings=$warnings" >> $GITHUB_OUTPUT
+      - name: Upload Semgrep Results as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep_output.json
